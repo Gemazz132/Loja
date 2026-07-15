@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Produto — AURUM</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/store.css">
+  <link rel="stylesheet" href="/css/product.css">
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="site-header">
+    <div class="header-inner">
+      <nav class="header-nav-left">
+        <a href="/?category=casacos">Casacos</a>
+        <a href="/?category=camisolas">Camisolas</a>
+        <a href="/?category=camisas">Camisas</a>
+        <a href="/?category=calcas">Calças</a>
+      </nav>
+      <a href="/" class="logo">AURUM</a>
+      <div class="header-actions">
+        <button class="icon-btn" id="searchToggle" aria-label="Pesquisar">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        </button>
+        <a href="#" class="icon-btn" id="accountBtn" aria-label="Conta">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </a>
+        <button class="icon-btn cart-btn" id="cartToggle" aria-label="Carrinho">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+          <span class="cart-count" id="cartCount">0</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- BREADCRUMB -->
+  <div class="breadcrumb-bar">
+    <div class="container">
+      <nav class="breadcrumb">
+        <a href="/">Início</a>
+        <span>›</span>
+        <a href="#" id="breadcrumbCat">Colecção</a>
+        <span>›</span>
+        <span id="breadcrumbNome">Produto</span>
+      </nav>
+    </div>
+  </div>
+
+  <!-- PRODUTO -->
+  <main class="produto-detail container" id="produtoMain">
+    <!-- Skeleton de carregamento -->
+    <div class="produto-skeleton" id="produtoSkeleton">
+      <div class="skeleton-gallery">
+        <div class="skeleton-img"></div>
+      </div>
+      <div class="skeleton-info">
+        <div class="skeleton-line w60"></div>
+        <div class="skeleton-line w40"></div>
+        <div class="skeleton-line w80"></div>
+        <div class="skeleton-line w100"></div>
+        <div class="skeleton-line w100"></div>
+      </div>
+    </div>
+
+    <!-- Conteúdo real -->
+    <div id="produtoConteudo" style="display:none">
+      <!-- Galeria -->
+      <div class="produto-galeria">
+        <div class="galeria-main" id="galeriaMain">
+          <div class="galeria-placeholder" id="galeriaPlaceholder">
+            <span class="placeholder-emoji" id="placeholderEmoji">👕</span>
+          </div>
+          <img id="galeriaImg" class="galeria-img" style="display:none" alt="">
+          <button type="button" class="galeria-seta galeria-seta-prev" id="galeriaPrev" aria-label="Imagem anterior" style="display:none">‹</button>
+          <button type="button" class="galeria-seta galeria-seta-next" id="galeriaNext" aria-label="Imagem seguinte" style="display:none">›</button>
+        </div>
+        <div class="galeria-thumbs" id="galeriaThumbs"></div>
+      </div>
+
+      <!-- Info do produto -->
+      <div class="produto-info">
+        <div class="produto-categoria" id="produtoCategoria"></div>
+        <h1 class="produto-nome" id="produtoNome"></h1>
+
+        <div class="produto-preco-wrap">
+          <span class="produto-preco" id="produtoPreco"></span>
+          <span class="produto-preco-original" id="produtoPrecoOriginal" style="display:none"></span>
+          <span class="badge-promo" id="badgePromo" style="display:none">Promoção</span>
+        </div>
+
+        <p class="produto-descricao" id="produtoDescricao"></p>
+
+        <!-- Cores -->
+        <div class="opcoes-grupo" id="coresGrupo" style="display:none">
+          <div class="opcoes-label">Cor: <strong id="corSelecionada">—</strong></div>
+          <div class="opcoes-swatches" id="coresSwatches"></div>
+        </div>
+
+        <!-- Tamanhos -->
+        <div class="opcoes-grupo" id="tamanhosGrupo" style="display:none">
+          <div class="opcoes-label-row">
+            <span>Tamanho: <strong id="tamanhoSelecionado">—</strong></span>
+            <a href="#guia-tamanhos" class="opcoes-guia">Guia de tamanhos</a>
+          </div>
+          <div class="opcoes-tamanhos" id="tamanhosLista"></div>
+        </div>
+
+        <!-- Quantidade -->
+        <div class="opcoes-grupo">
+          <div class="opcoes-label">Quantidade</div>
+          <div class="qty-control">
+            <button class="qty-btn" id="qtyMinus">−</button>
+            <span class="qty-value" id="qtyValue">1</span>
+            <button class="qty-btn" id="qtyPlus">+</button>
+          </div>
+          <div class="stock-info" id="stockInfo"></div>
+        </div>
+
+        <!-- CTA -->
+        <div class="produto-cta">
+          <button class="btn-primary full-width btn-lg" id="addToCartBtn">
+            Adicionar ao carrinho
+          </button>
+          <div class="add-feedback" id="addFeedback"></div>
+        </div>
+
+        <!-- Detalhes expansíveis -->
+        <div class="produto-acordeao">
+          <details class="acordeao-item" open>
+            <summary>Descrição detalhada</summary>
+            <div class="acordeao-content" id="descricaoLonga"></div>
+          </details>
+          <details class="acordeao-item" id="materialItem" style="display:none">
+            <summary>Composição & Material</summary>
+            <div class="acordeao-content" id="materialContent"></div>
+          </details>
+          <details class="acordeao-item" id="lavagemItem" style="display:none">
+            <summary>Instruções de lavagem</summary>
+            <div class="acordeao-content" id="lavagemContent"></div>
+          </details>
+          <details class="acordeao-item">
+            <summary>Entregas & Devoluções</summary>
+            <div class="acordeao-content">
+              <p>Envio gratuito em compras acima de 75€. Entrega em 3–5 dias úteis para Portugal continental.</p>
+              <p>Devoluções aceites no prazo de 30 dias após recepção, em artigos não usados e com etiquetas.</p>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+
+    <!-- Estado de erro -->
+    <div id="produtoErro" style="display:none" class="produto-erro">
+      <p>Produto não encontrado.</p>
+      <a href="/" class="btn-outline">Voltar à loja</a>
+    </div>
+  </main>
+
+  <!-- Produtos relacionados -->
+  <section class="relacionados-section" id="relacionadosSection" style="display:none">
+    <div class="container">
+      <h2 class="section-title">Também pode interessar</h2>
+      <div class="produtos-grid" id="relacionadosGrid"></div>
+    </div>
+  </section>
+
+  <!-- CARRINHO DRAWER (igual ao index) -->
+  <div class="cart-overlay" id="cartOverlay"></div>
+  <aside class="cart-drawer" id="cartDrawer">
+    <div class="cart-header">
+      <h3>O teu carrinho</h3>
+      <button class="icon-btn" id="cartClose">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="cart-items" id="cartItems"></div>
+    <div class="cart-footer" id="cartFooter" style="display:none">
+      <div class="cart-subtotal">
+        <span>Subtotal</span>
+        <span id="cartSubtotal">0,00 €</span>
+      </div>
+      <div class="cart-portes" id="cartPortesRow">
+        <span>Portes</span>
+        <span id="cartPortes">4,99 €</span>
+      </div>
+      <div class="cart-total-row">
+        <span>Total</span>
+        <span id="cartTotal">0,00 €</span>
+      </div>
+      <p class="portes-info" id="portesInfo"></p>
+      <button class="btn-primary full-width" id="checkoutBtn">Finalizar compra</button>
+    </div>
+    <div class="cart-empty" id="cartEmpty">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+      <p>O teu carrinho está vazio</p>
+      <a href="/" class="btn-outline">Explorar colecção</a>
+    </div>
+  </aside>
+
+  <!-- MODAL CHECKOUT -->
+  <div class="modal-overlay" id="checkoutOverlay">
+    <div class="modal" id="checkoutModal">
+      <div class="modal-header">
+        <h3>Finalizar Compra</h3>
+        <button class="icon-btn" id="checkoutClose">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <form class="checkout-form" id="checkoutForm">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Nome completo *</label>
+            <input type="text" name="nome" required>
+          </div>
+          <div class="form-group">
+            <label>Email *</label>
+            <input type="email" name="email" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Telefone</label>
+            <input type="tel" name="telefone">
+          </div>
+          <div class="form-group">
+            <label>Código Postal</label>
+            <input type="text" name="codigo_postal" placeholder="0000-000">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Morada</label>
+          <input type="text" name="morada">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Cidade</label>
+            <input type="text" name="cidade">
+          </div>
+          <div class="form-group">
+            <label>País</label>
+            <input type="text" name="pais" value="Portugal">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Método de pagamento</label>
+          <select name="metodo_pagamento">
+            <option value="Transferência">Transferência Bancária</option>
+            <option value="MBWay">MBWay</option>
+            <option value="Multibanco">Multibanco</option>
+          </select>
+        </div>
+        <div class="order-summary" id="orderSummaryModal"></div>
+        <button type="submit" class="btn-primary full-width" id="submitCheckout">Confirmar encomenda</button>
+        <p class="checkout-error" id="checkoutError"></p>
+      </form>
+      <div class="checkout-success" id="checkoutSuccess" style="display:none">
+        <div class="success-icon">✓</div>
+        <h3>Encomenda confirmada!</h3>
+        <p>O teu número de encomenda é:</p>
+        <p class="order-number" id="orderNumberDisplay"></p>
+        <p class="success-sub">Obrigado por escolheres AURUM.</p>
+        <button class="btn-outline" onclick="location.href='/'">Continuar a comprar</button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <span class="logo">AURUM</span>
+        <p>Moda atemporal, materiais excepcionais.</p>
+      </div>
+      <div class="footer-links">
+        <div>
+          <h4>Colecção</h4>
+          <a href="/?category=casacos">Casacos</a>
+          <a href="/?category=camisolas">Camisolas</a>
+          <a href="/?category=calcas">Calças</a>
+          <a href="/?category=vestidos">Vestidos</a>
+        </div>
+        <div>
+          <h4>Apoio</h4>
+          <a href="#">Trocas & Devoluções</a>
+          <a href="#">Guia de Tamanhos</a>
+          <a href="#">Envios</a>
+          <a href="#">Contacto</a>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2024 AURUM. Todos os direitos reservados.</p>
+    </div>
+  </footer>
+
+  <script src="/js/cart.js"></script>
+  <script src="/js/account.js"></script>
+  <script src="/js/product.js"></script>
+</body>
+</html>

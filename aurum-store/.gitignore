@@ -1,0 +1,13 @@
+node_modules/
+*.log
+.env
+.DS_Store
+
+# Base de dados local (gerada em runtime)
+db/aurum.db
+db/aurum.db-shm
+db/aurum.db-wal
+
+# Imagens carregadas pelos utilizadores (mantém a pasta, ignora o conteúdo)
+public/uploads/*
+!public/uploads/.gitkeep

@@ -1,0 +1,8 @@
+{
+  "nome": "Formulário de Contacto",
+  "versao": "1.0.0",
+  "descricao": "Adiciona um endpoint /api/contacto que recebe mensagens do site e as guarda para consulta no painel (/api/admin/contactos).",
+  "configSchema": {
+    "email_destino": { "tipo": "string", "label": "Email para onde reencaminhar", "obrigatorio": true }
+  }
+}

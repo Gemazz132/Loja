@@ -1,0 +1,27 @@
+{
+  "name": "aurum-store",
+  "version": "1.0.0",
+  "description": "AURUM — Loja de dropshipping de roupa com backend, base de dados e painel de administração.",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "seed": "node scripts/seed.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "bcryptjs": "2.4.3",
+    "better-sqlite3": "11.3.0",
+    "cookie-parser": "1.4.7",
+    "dotenv": "16.4.5",
+    "express": "4.22.2",
+    "express-rate-limit": "7.4.0",
+    "express-session": "1.19.0",
+    "helmet": "7.1.0",
+    "multer": "2.2.0",
+    "nodemailer": "9.0.1"
+  }
+}
