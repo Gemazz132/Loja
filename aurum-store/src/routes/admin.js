@@ -7,14 +7,23 @@ const { requirePermission } = require('../middleware/rbac');
 const upload = require('../middleware/upload');
 const { parsearJSON } = require('../utils/helpers');
 const { enviarEmail } = require('../utils/mailer');
+const { registarAtividade } = require('../utils/activityLog');
 
 router.use(requireAdmin);
 
 // ── Dashboard ──────────────────────────────────────────────────────────────
+const LIMIAR_STOCK_BAIXO = 5;
+
 router.get('/dashboard', requirePermission('encomendas.ver'), (req, res) => {
   const vendasHoje = db.prepare(`
     SELECT COALESCE(SUM(total),0) as v FROM encomendas
     WHERE estado != 'Cancelado' AND arquivada = 0 AND date(criado_em) = date('now')
+  `).get().v;
+
+  // Ontem — para comparar com "hoje"
+  const vendasOntem = db.prepare(`
+    SELECT COALESCE(SUM(total),0) as v FROM encomendas
+    WHERE estado != 'Cancelado' AND date(criado_em) = date('now', '-1 day')
   `).get().v;
 
   const vendasMes = db.prepare(`
@@ -22,8 +31,27 @@ router.get('/dashboard', requirePermission('encomendas.ver'), (req, res) => {
     WHERE estado != 'Cancelado' AND arquivada = 0 AND strftime('%Y-%m', criado_em) = strftime('%Y-%m', 'now')
   `).get().v;
 
+  // Mês passado até ao mesmo dia do mês — comparação justa "month-to-date"
+  const vendasMesPassado = db.prepare(`
+    SELECT COALESCE(SUM(total),0) as v FROM encomendas
+    WHERE estado != 'Cancelado'
+      AND strftime('%Y-%m', criado_em) = strftime('%Y-%m', 'now', '-1 month')
+      AND CAST(strftime('%d', criado_em) AS INTEGER) <= CAST(strftime('%d', 'now') AS INTEGER)
+  `).get().v;
+
   const encomendasPendentes = db.prepare(`SELECT COUNT(*) as n FROM encomendas WHERE estado = 'Pendente' AND arquivada = 0`).get().n;
   const totalClientes = db.prepare(`SELECT COUNT(*) as n FROM utilizadores`).get().n;
+
+  // Comparação de clientes: novos este mês vs mês passado (até ao mesmo dia)
+  const clientesEsteMes = db.prepare(`
+    SELECT COUNT(*) as n FROM utilizadores
+    WHERE strftime('%Y-%m', criado_em) = strftime('%Y-%m', 'now')
+  `).get().n;
+  const clientesMesPassado = db.prepare(`
+    SELECT COUNT(*) as n FROM utilizadores
+    WHERE strftime('%Y-%m', criado_em) = strftime('%Y-%m', 'now', '-1 month')
+      AND CAST(strftime('%d', criado_em) AS INTEGER) <= CAST(strftime('%d', 'now') AS INTEGER)
+  `).get().n;
 
   const vendasPorDia = db.prepare(`
     SELECT date(criado_em) as dia, COALESCE(SUM(total),0) as total
@@ -40,7 +68,44 @@ router.get('/dashboard', requirePermission('encomendas.ver'), (req, res) => {
     GROUP BY nome_produto ORDER BY quantidade DESC LIMIT 8
   `).all();
 
-  res.json({ vendasHoje, vendasMes, encomendasPendentes, totalClientes, vendasPorDia, produtosMaisVendidos });
+  // Alertas de stock baixo/esgotado (só produtos ativos)
+  const stockBaixo = db.prepare(`
+    SELECT id, nome, categoria, stock, imagem
+    FROM produtos
+    WHERE ativo = 1 AND stock <= ?
+    ORDER BY stock ASC, nome ASC
+    LIMIT 20
+  `).all(LIMIAR_STOCK_BAIXO);
+  const totalStockBaixo = db.prepare(`SELECT COUNT(*) as n FROM produtos WHERE ativo = 1 AND stock <= ?`).get(LIMIAR_STOCK_BAIXO).n;
+
+  // Últimas encomendas
+  const ultimasEncomendas = db.prepare(`
+    SELECT id, numero, nome_cliente, total, estado, criado_em
+    FROM encomendas WHERE arquivada = 0
+    ORDER BY criado_em DESC LIMIT 6
+  `).all();
+
+  res.json({
+    vendasHoje, vendasOntem,
+    vendasMes, vendasMesPassado,
+    encomendasPendentes,
+    totalClientes, clientesEsteMes, clientesMesPassado,
+    vendasPorDia, produtosMaisVendidos,
+    stockBaixo, totalStockBaixo, limiarStockBaixo: LIMIAR_STOCK_BAIXO,
+    ultimasEncomendas,
+  });
+});
+
+// ── Registo de atividade ─────────────────────────────────────────────────
+router.get('/logs', requirePermission('logs.ver'), (req, res) => {
+  const limite = Math.min(500, Math.max(1, +req.query.limite || 100));
+  const linhas = db.prepare(`
+    SELECT id, admin_id, admin_nome, acao, entidade, entidade_id, detalhe, criado_em
+    FROM logs_atividade
+    ORDER BY criado_em DESC, id DESC
+    LIMIT ?
+  `).all(limite);
+  res.json(linhas);
 });
 
 // Mantido para compatibilidade com scripts/relatórios que já usem os nomes antigos
@@ -86,6 +151,7 @@ router.post('/products', requirePermission('produtos.editar'), (req, res) => {
     JSON.stringify(Array.isArray(tamanhos) ? tamanhos : []),
     JSON.stringify(Array.isArray(cores) ? cores : []),
     +stock || 0, ativo ? 1 : 0, destaque ? 1 : 0, material || '', instrucoes_lavagem || '');
+  registarAtividade(req, { acao: 'produto.criar', entidade: 'produto', entidadeId: r.lastInsertRowid, detalhe: `Criou o produto "${nome}"` });
   res.json({ ok: true, id: r.lastInsertRowid });
 });
 
@@ -109,18 +175,22 @@ router.put('/products/:id', requirePermission('produtos.editar'), (req, res) => 
     JSON.stringify(Array.isArray(tamanhos) ? tamanhos : []),
     JSON.stringify(Array.isArray(cores) ? cores : []),
     +stock || 0, ativo ? 1 : 0, destaque ? 1 : 0, material || '', instrucoes_lavagem || '', req.params.id);
+  registarAtividade(req, { acao: 'produto.editar', entidade: 'produto', entidadeId: req.params.id, detalhe: `Editou o produto "${nome}"` });
   res.json({ ok: true });
 });
 
 router.delete('/products/:id', requirePermission('produtos.editar'), (req, res) => {
+  const p = db.prepare('SELECT nome FROM produtos WHERE id = ?').get(req.params.id);
   db.prepare('DELETE FROM produtos WHERE id = ?').run(req.params.id);
+  registarAtividade(req, { acao: 'produto.remover', entidade: 'produto', entidadeId: req.params.id, detalhe: `Removeu o produto "${p ? p.nome : req.params.id}"` });
   res.json({ ok: true });
 });
 
 router.patch('/products/:id/toggle', requirePermission('produtos.editar'), (req, res) => {
-  const p = db.prepare('SELECT ativo FROM produtos WHERE id = ?').get(req.params.id);
+  const p = db.prepare('SELECT nome, ativo FROM produtos WHERE id = ?').get(req.params.id);
   if (!p) return res.status(404).json({ error: 'Não encontrado.' });
   db.prepare('UPDATE produtos SET ativo = ? WHERE id = ?').run(p.ativo ? 0 : 1, req.params.id);
+  registarAtividade(req, { acao: 'produto.estado', entidade: 'produto', entidadeId: req.params.id, detalhe: `${p.ativo ? 'Desativou' : 'Ativou'} o produto "${p.nome}"` });
   res.json({ ok: true, ativo: !p.ativo });
 });
 
@@ -163,6 +233,7 @@ router.patch('/orders/:id/estado', requirePermission('encomendas.editar'), async
   if (!enc) return res.status(404).json({ error: 'Encomenda não encontrada.' });
 
   db.prepare('UPDATE encomendas SET estado = ? WHERE id = ?').run(estado, req.params.id);
+  registarAtividade(req, { acao: 'encomenda.estado', entidade: 'encomenda', entidadeId: enc.numero, detalhe: `Encomenda ${enc.numero}: ${enc.estado} → ${estado}` });
 
   if (notificar && MENSAGENS_ESTADO[estado]) {
     try {
@@ -189,11 +260,13 @@ router.patch('/orders/:id/archive', (req, res) => {
     return res.status(400).json({ error: 'Só é possível arquivar encomendas Entregues ou Canceladas.' });
 
   db.prepare('UPDATE encomendas SET arquivada = 1, arquivada_em = CURRENT_TIMESTAMP WHERE id = ?').run(req.params.id);
+  registarAtividade(req, { acao: 'encomenda.arquivar', entidade: 'encomenda', entidadeId: req.params.id, detalhe: `Arquivou uma encomenda` });
   res.json({ ok: true });
 });
 
 router.patch('/orders/:id/unarchive', (req, res) => {
   db.prepare('UPDATE encomendas SET arquivada = 0, arquivada_em = NULL WHERE id = ?').run(req.params.id);
+  registarAtividade(req, { acao: 'encomenda.desarquivar', entidade: 'encomenda', entidadeId: req.params.id, detalhe: `Desarquivou uma encomenda` });
   res.json({ ok: true });
 });
 
@@ -203,6 +276,7 @@ router.post('/orders/archive-all-delivered', (req, res) => {
     UPDATE encomendas SET arquivada = 1, arquivada_em = CURRENT_TIMESTAMP
     WHERE estado = 'Entregue' AND arquivada = 0
   `).run();
+  registarAtividade(req, { acao: 'encomenda.arquivar', entidade: 'encomenda', detalhe: `Arquivou ${result.changes} encomenda(s) entregue(s) em massa` });
   res.json({ ok: true, arquivadas: result.changes });
 });
 
@@ -263,6 +337,7 @@ router.put('/config', requirePermission('definicoes.editar'), (req, res) => {
       upsert.run(chave, String(num));
     }
   }
+  registarAtividade(req, { acao: 'definicoes.portes', entidade: 'config', detalhe: 'Atualizou os valores de portes' });
   res.json({ ok: true });
 });
 
