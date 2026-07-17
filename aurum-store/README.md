@@ -11,7 +11,7 @@ clientes, cupões) com CMS, RBAC, plugins e analytics internos.
 ## Stack
 
 - **Backend:** Node.js + Express + SQLite (`better-sqlite3`)
-- **Painel de administração:** React + TypeScript + Vite + Cloudscape Design Components
+- **Painel de administração:** React + TypeScript + Vite + Tailwind CSS + shadcn/ui (Radix primitives)
 - **Autenticação:** sessões (`express-session`) + `bcryptjs`, com RBAC (Administrador/Editor/Autor)
 - **Upload de imagens:** `multer` (imagem principal + galeria multi-imagem por produto)
 - **Email:** `nodemailer` (opcional — sem SMTP configurado corre em modo dev, só regista no terminal)
@@ -36,9 +36,11 @@ aurum-store/                        # Backend (Express) + loja pública
 ├── public/                          # Loja pública — inalterada na stack, com carrossel de fotos no produto
 └── admin-dashboard-dist/            # Build do painel (gerada por `npm run build` em admin-dashboard/)
 
-admin-dashboard/                     # Painel de administração (React + Cloudscape)
-├── src/lib/{api.ts,auth.tsx}        # cliente de API + contexto de sessão/permissões
-├── src/pages/                       # Dashboard, Products, Orders, Customers, Coupons, Content, Team, Plugins, Analytics, Settings
+admin-dashboard/                     # Painel de administração (React + shadcn/ui)
+├── src/lib/{api.ts,auth.tsx,theme.tsx,utils.ts}  # cliente de API + contexto de sessão/permissões + tema dark/light
+├── src/components/ui/               # Componentes shadcn/ui (button, card, dialog, table, select, etc.)
+├── src/components/{layout,shared}/  # Sidebar, TopBar, PageHeader, StatusBadge
+├── src/pages/                       # Dashboard, Products, Orders, Customers, Coupons, Content, Team, Plugins, Analytics, Settings, Login
 └── package.json
 ```
 

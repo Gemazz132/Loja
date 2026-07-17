@@ -1,146 +1,134 @@
-// Cliente de API do painel — substitui por completo o `src/data.ts` mock do
-// Project Bolt. Todas as chamadas usam `credentials: 'include'` porque a
-// autenticação do backend é por cookie de sessão (express-session), não por
-// token Bearer.
+const BASE = ''
 
-const BASE = '/api';
-
-class ApiError extends Error {
-  status: number;
-  constructor(message: string, status: number) {
-    super(message);
-    this.status = status;
-  }
-}
-
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
+  const res = await fetch(`${BASE}${url}`, {
     ...options,
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new ApiError(body.error || `Erro ${res.status}`, res.status);
-  }
-  if (res.status === 204) return undefined as T;
-  return res.json();
+    headers: {
+      'Content-Type': 'application/json',
+      ...(options.headers || {}),
+    },
+    credentials: 'same-origin',
+  })
+  const text = await res.text()
+  const data = text ? JSON.parse(text) : null
+  if (!res.ok) throw new Error(data?.error || `Erro ${res.status}`)
+  return data as T
 }
 
-// ── Sessão / equipa ─────────────────────────────────────────────────────
-export interface Sessao {
-  id: number;
-  nome: string;
-  email: string;
-  role: 'admin' | 'editor' | 'autor';
-  permissoes: string[];
-}
-
-export const auth = {
+export const api = {
+  // Auth
   login: (email: string, password: string) =>
-    request<{ ok: true }>('/admin/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
-  logout: () => request<{ ok: true }>('/admin/logout', { method: 'POST' }),
-  me: () => request<Sessao>('/admin/me'),
-};
+    request<{ ok: boolean; nome: string }>('/api/admin/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
+  logout: () => request<{ ok: boolean }>('/api/admin/logout', { method: 'POST' }),
+  me: () =>
+    request<{ id: number; nome: string; email: string; role: string; permissoes: string[] }>('/api/admin/me'),
 
-// ── Produtos ─────────────────────────────────────────────────────────────
-export interface Produto {
-  id: number;
-  nome: string;
-  descricao: string;
-  descricao_longa: string;
-  preco: number;
-  preco_promocional: number | null;
-  categoria: string;
-  imagem: string | null;
-  imagens_extra: string;      // JSON string — usar parseImagensExtra()
-  tamanhos: string;           // JSON string
-  cores: string;              // JSON string
-  stock: number;
-  ativo: number;
-  destaque: number;
+  // Dashboard
+  dashboard: () =>
+    request<{ vendasHoje: number; vendasMes: number; encomendasPendentes: number; totalClientes: number; vendasPorDia: { dia: string; total: number }[]; produtosMaisVendidos: { nome: string; quantidade: number }[] }>('/api/admin/dashboard'),
+
+  // Products
+  products: (params?: { q?: string; categoria?: string }) => {
+    const qs = new URLSearchParams(params as Record<string, string>).toString()
+    return request<any[]>(`/api/admin/products${qs ? `?${qs}` : ''}`)
+  },
+  product: (id: number | string) => request<any>(`/api/admin/products/${id}`),
+  createProduct: (data: any) => request<{ ok: boolean; id: number }>('/api/admin/products', { method: 'POST', body: JSON.stringify(data) }),
+  updateProduct: (id: number | string, data: any) => request<{ ok: boolean }>(`/api/admin/products/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteProduct: (id: number | string) => request<{ ok: boolean }>(`/api/admin/products/${id}`, { method: 'DELETE' }),
+  toggleProduct: (id: number | string) => request<{ ok: boolean; ativo: boolean }>(`/api/admin/products/${id}/toggle`, { method: 'PATCH' }),
+  uploadImage: (file: File) => {
+    const form = new FormData()
+    form.append('imagem', file)
+    return fetch('/api/admin/upload', { method: 'POST', body: form, credentials: 'same-origin' }).then(async (r) => {
+      const d = await r.json()
+      if (!r.ok) throw new Error(d.error)
+      return d as { ok: boolean; url: string }
+    })
+  },
+  uploadImages: (files: File[]) => {
+    const form = new FormData()
+    files.forEach((f) => form.append('imagens', f))
+    return fetch('/api/admin/upload-multi', { method: 'POST', body: form, credentials: 'same-origin' }).then(async (r) => {
+      const d = await r.json()
+      if (!r.ok) throw new Error(d.error)
+      return d as { ok: boolean; urls: string[] }
+    })
+  },
+
+  // Orders
+  orders: (params?: { q?: string; estado?: string; arquivadas?: string }) => {
+    const qs = new URLSearchParams(params as Record<string, string>).toString()
+    return request<any[]>(`/api/admin/orders${qs ? `?${qs}` : ''}`)
+  },
+  order: (id: number | string) => request<any>(`/api/admin/orders/${id}`),
+  updateOrderStatus: (id: number | string, estado: string, notificar?: boolean) =>
+    request<{ ok: boolean }>(`/api/admin/orders/${id}/estado`, { method: 'PATCH', body: JSON.stringify({ estado, notificar }) }),
+  archiveOrder: (id: number | string) => request<{ ok: boolean }>(`/api/admin/orders/${id}/archive`, { method: 'PATCH' }),
+  unarchiveOrder: (id: number | string) => request<{ ok: boolean }>(`/api/admin/orders/${id}/unarchive`, { method: 'PATCH' }),
+  archiveAllDelivered: () => request<{ ok: boolean; arquivadas: number }>('/api/admin/orders/archive-all-delivered', { method: 'POST' }),
+
+  // Customers
+  customers: (q?: string) => request<any[]>(`/api/admin/customers${q ? `?q=${encodeURIComponent(q)}` : ''}`),
+  customer: (id: number | string) => request<any>(`/api/admin/customers/${id}`),
+
+  // Coupons
+  coupons: () => request<any[]>('/api/admin/coupons'),
+  createCoupon: (data: any) => request<{ ok: boolean; id: number }>('/api/admin/coupons', { method: 'POST', body: JSON.stringify(data) }),
+  updateCoupon: (id: number | string, data: any) => request<{ ok: boolean }>(`/api/admin/coupons/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteCoupon: (id: number | string) => request<{ ok: boolean }>(`/api/admin/coupons/${id}`, { method: 'DELETE' }),
+
+  // CMS
+  cmsPages: () => request<any[]>('/api/admin/cms/paginas'),
+  createPage: (data: any) => request<{ ok: boolean; id: number }>('/api/admin/cms/paginas', { method: 'POST', body: JSON.stringify(data) }),
+  updatePage: (id: number | string, data: any) => request<{ ok: boolean }>(`/api/admin/cms/paginas/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deletePage: (id: number | string) => request<{ ok: boolean }>(`/api/admin/cms/paginas/${id}`, { method: 'DELETE' }),
+  cmsPosts: () => request<any[]>('/api/admin/cms/posts'),
+  createPost: (data: any) => request<{ ok: boolean; id: number }>('/api/admin/cms/posts', { method: 'POST', body: JSON.stringify(data) }),
+  cmsCategories: () => request<any[]>('/api/admin/cms/categorias'),
+  createCategory: (nome: string) => request<{ ok: boolean; id: number }>('/api/admin/cms/categorias', { method: 'POST', body: JSON.stringify({ nome }) }),
+  media: () => request<any[]>('/api/admin/cms/media'),
+  uploadMedia: (files: File[]) => {
+    const form = new FormData()
+    files.forEach((f) => form.append('imagens', f))
+    return fetch('/api/admin/cms/media/upload', { method: 'POST', body: form, credentials: 'same-origin' }).then(async (r) => {
+      const d = await r.json()
+      if (!r.ok) throw new Error(d.error)
+      return d as { ok: boolean; items: any[] }
+    })
+  },
+
+  // Team
+  team: () => request<any[]>('/api/admin/team'),
+  teamRoles: () => request<any[]>('/api/admin/team/roles'),
+  createTeamMember: (data: { nome: string; email: string; password: string; role: string }) =>
+    request<{ ok: boolean; id: number }>('/api/admin/team', { method: 'POST', body: JSON.stringify(data) }),
+  updateTeamMemberRole: (id: number | string, role: string) =>
+    request<{ ok: boolean }>(`/api/admin/team/${id}/role`, { method: 'PUT', body: JSON.stringify({ role }) }),
+  deleteTeamMember: (id: number | string) => request<{ ok: boolean }>(`/api/admin/team/${id}`, { method: 'DELETE' }),
+
+  // Settings
+  settings: () => request<Record<string, string>>('/api/admin/settings'),
+  updateSettings: (data: Record<string, string>) => request<{ ok: boolean }>('/api/admin/settings', { method: 'PUT', body: JSON.stringify(data) }),
+  config: () => request<{ portes_valor: number; portes_gratis_acima: number }>('/api/admin/config'),
+  updateConfig: (data: { portes_valor?: number; portes_gratis_acima?: number }) =>
+    request<{ ok: boolean }>('/api/admin/config', { method: 'PUT', body: JSON.stringify(data) }),
+
+  // Plugins
+  plugins: () => request<any[]>('/api/admin/plugins'),
+  updatePluginState: (pasta: string, ativo: boolean, config?: any) =>
+    request<{ ok: boolean; aviso: string }>(`/api/admin/plugins/${pasta}/estado`, { method: 'PUT', body: JSON.stringify({ ativo, config }) }),
+
+  // Analytics
+  analytics: (dias?: number) => request<any>(`/api/admin/analytics/resumo${dias ? `?dias=${dias}` : ''}`),
+
+  // DB viewer
+  dbTables: () => request<{ tabelas: { nome: string; linhas: number }[] }>('/api/admin/db/tabelas'),
+  dbTableData: (nome: string, pagina?: number, porPagina?: number) =>
+    request<any>(`/api/admin/db/tabelas/${nome}?pagina=${pagina || 1}&porPagina=${porPagina || 50}`),
 }
 
-export const parseImagensExtra = (p: Produto): string[] => {
-  try { return JSON.parse(p.imagens_extra || '[]'); } catch { return []; }
-};
-export const parseVariantes = (json: string): string[] => {
-  try { return JSON.parse(json || '[]'); } catch { return []; }
-};
-
-type ProdutoEscrita = Omit<Partial<Produto>, 'imagens_extra' | 'tamanhos' | 'cores'> & {
-  imagens_extra?: string[];
-  tamanhos?: string[];
-  cores?: string[];
-};
-
-export const produtosApi = {
-  listar: () => request<Produto[]>('/admin/products'),
-  criar: (dados: ProdutoEscrita) =>
-    request<{ ok: true; id: number }>('/admin/products', { method: 'POST', body: JSON.stringify(dados) }),
-  atualizar: (id: number, dados: ProdutoEscrita) =>
-    request<{ ok: true }>(`/admin/products/${id}`, { method: 'PUT', body: JSON.stringify(dados) }),
-  remover: (id: number) => request<{ ok: true }>(`/admin/products/${id}`, { method: 'DELETE' }),
-  alternarAtivo: (id: number) => request<{ ok: true }>(`/admin/products/${id}/toggle`, { method: 'PATCH' }),
-
-  // Upload — usa FormData, por isso não passa por request() (que assume JSON)
-  uploadImagemPrincipal: async (file: File): Promise<string> => {
-    const fd = new FormData();
-    fd.append('imagem', file);
-    const res = await fetch(`${BASE}/admin/upload`, { method: 'POST', credentials: 'include', body: fd });
-    if (!res.ok) throw new ApiError('Falha no upload.', res.status);
-    return (await res.json()).url;
-  },
-  uploadGaleria: async (files: File[]): Promise<string[]> => {
-    const fd = new FormData();
-    files.forEach(f => fd.append('imagens', f));
-    const res = await fetch(`${BASE}/admin/upload-multi`, { method: 'POST', credentials: 'include', body: fd });
-    if (!res.ok) throw new ApiError('Falha no upload.', res.status);
-    return (await res.json()).urls;
-  },
-};
-
-// ── Encomendas ───────────────────────────────────────────────────────────
-export interface Encomenda {
-  id: number;
-  numero: string;
-  nome_cliente: string;
-  email_cliente: string;
-  total: number;
-  estado: 'Pendente' | 'Pago' | 'Preparação' | 'Enviado' | 'Entregue' | 'Cancelado';
-  pagamento: string;
-  criado_em: string;
-}
-
-export const encomendasApi = {
-  listar: (filtros?: { q?: string; estado?: string }) => {
-    const params = new URLSearchParams(filtros as Record<string, string>).toString();
-    return request<Encomenda[]>(`/admin/orders${params ? `?${params}` : ''}`);
-  },
-  detalhe: (id: number) => request<Encomenda & { itens: unknown[] }>(`/admin/orders/${id}`),
-  // Actualiza o estado E notifica o cliente por email num único pedido —
-  // ver server/src/routes/admin.js: usa nodemailer (já é dependência do projecto).
-  atualizarEstado: (id: number, estado: Encomenda['estado'], notificarCliente = true) =>
-    request<{ ok: true }>(`/admin/orders/${id}/estado`, {
-      method: 'PATCH',
-      body: JSON.stringify({ estado, notificar: notificarCliente }),
-    }),
-};
-
-// ── Clientes ─────────────────────────────────────────────────────────────
-export interface Cliente {
-  id: number;
-  nome: string;
-  email: string;
-  criado_em: string;
-  total_encomendas: number;
-  total_gasto: number;
-}
-export const clientesApi = {
-  listar: (q?: string) => request<Cliente[]>(`/admin/customers${q ? `?q=${encodeURIComponent(q)}` : ''}`),
-  detalhe: (id: number) => request<Cliente & { encomendas: Encomenda[] }>(`/admin/customers/${id}`),
-};
-
+<<<<<<< HEAD
 // ── Cupões ───────────────────────────────────────────────────────────────
 export interface Cupom {
   id: number;
@@ -233,3 +221,6 @@ export const analyticsApi = {
 };
 
 export { ApiError };
+=======
+export type AdminUser = { id: number; nome: string; email: string; role: string; permissoes: string[] }
+>>>>>>> eaf13e42e132f6e36e3fe180092e7a95536b94a3

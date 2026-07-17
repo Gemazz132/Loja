@@ -1,94 +1,134 @@
-import { useEffect, useState } from 'react';
-import ContentLayout from '@cloudscape-design/components/content-layout';
-import Header from '@cloudscape-design/components/header';
-import Grid from '@cloudscape-design/components/grid';
-import Container from '@cloudscape-design/components/container';
-import Box from '@cloudscape-design/components/box';
-import LineChart from '@cloudscape-design/components/line-chart';
-import BarChart from '@cloudscape-design/components/bar-chart';
-import { dashboardApi, ResumoDashboard } from '../lib/api';
+import { useEffect, useState } from 'react'
+import { api } from '@/lib/api'
+import { useAuth } from '@/lib/auth'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
+import { PageHeader } from '@/components/shared/PageHeader'
+import { formatCurrency, formatDate } from '@/lib/utils'
+import { TrendingUp, ShoppingCart, Clock, Users, Package } from 'lucide-react'
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar } from 'recharts'
 
-function CartaoMetrica({ titulo, valor }: { titulo: string; valor: string }) {
+export default function DashboardPage() {
+  const { hasPermission } = useAuth()
+  const [data, setData] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    api.dashboard()
+      .then(setData)
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  if (!hasPermission('encomendas.ver')) {
+    return <PageHeader title="Dashboard" description="Sem permissão para ver este painel." />
+  }
+
+  const stats = [
+    { label: 'Vendas Hoje', value: data ? formatCurrency(data.vendasHoje) : '—', icon: TrendingUp },
+    { label: 'Vendas no Mês', value: data ? formatCurrency(data.vendasMes) : '—', icon: ShoppingCart },
+    { label: 'Encomendas Pendentes', value: data?.encomendasPendentes ?? '—', icon: Clock },
+    { label: 'Total Clientes', value: data?.totalClientes ?? '—', icon: Users },
+  ]
+
   return (
-    <Container>
-      <Box variant="awsui-key-label">{titulo}</Box>
-      <Box fontSize="display-l" fontWeight="bold">{valor}</Box>
-    </Container>
-  );
-}
+    <div>
+      <PageHeader title="Dashboard" description="Visão geral do desempenho da loja" />
 
-export default function Dashboard() {
-  const [resumo, setResumo] = useState<ResumoDashboard | null>(null);
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {stats.map((stat) => {
+          const Icon = stat.icon
+          return (
+            <Card key={stat.label}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">{stat.label}</CardTitle>
+                <Icon className="h-4 w-4 text-primary" />
+              </CardHeader>
+              <CardContent>
+                {loading ? <Skeleton className="h-8 w-24" /> : <p className="text-2xl font-bold">{stat.value}</p>}
+              </CardContent>
+            </Card>
+          )
+        })}
+      </div>
 
-  useEffect(() => { dashboardApi.resumo().then(setResumo); }, []);
+      <div className="mt-6 grid gap-4 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Vendas (30 dias)</CardTitle>
+            <CardDescription>Receita total por dia</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <Skeleton className="h-[280px] w-full" />
+            ) : (
+              <ResponsiveContainer width="100%" height={280}>
+                <AreaChart data={data?.vendasPorDia || []}>
+                  <defs>
+                    <linearGradient id="vendas" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis
+                    dataKey="dia"
+                    tickFormatter={(v) => formatDate(v).slice(0, 5)}
+                    tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                  />
+                  <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--popover))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px',
+                      fontSize: '12px',
+                    }}
+                    formatter={(v: number) => formatCurrency(v)}
+                  />
+                  <Area type="monotone" dataKey="total" stroke="hsl(var(--primary))" strokeWidth={2} fill="url(#vendas)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
 
-  if (!resumo) return <Box padding="l">A carregar…</Box>;
-
-  return (
-    <ContentLayout header={<Header variant="h1">Dashboard</Header>}>
-      <Grid gridDefinition={[{ colspan: 3 }, { colspan: 3 }, { colspan: 3 }, { colspan: 3 }]}>
-        <CartaoMetrica titulo="Vendas hoje" valor={`${resumo.vendasHoje.toFixed(2)} €`} />
-        <CartaoMetrica titulo="Vendas este mês" valor={`${resumo.vendasMes.toFixed(2)} €`} />
-        <CartaoMetrica titulo="Encomendas pendentes" valor={String(resumo.encomendasPendentes)} />
-        <CartaoMetrica titulo="Total de clientes" valor={String(resumo.totalClientes)} />
-      </Grid>
-
-      <Box padding={{ top: 'l' }}>
-        <Grid gridDefinition={[{ colspan: 7 }, { colspan: 5 }]}>
-          <Container header={<Header variant="h2">Vendas por dia</Header>}>
-            <LineChart
-              series={[{
-                title: 'Vendas (€)',
-                type: 'line',
-                data: resumo.vendasPorDia.map(d => ({ x: d.dia, y: d.total })),
-              }]}
-              xDomain={resumo.vendasPorDia.map(d => d.dia)}
-              yDomain={[0, Math.max(10, ...resumo.vendasPorDia.map(d => d.total)) * 1.2]}
-              i18nStrings={{
-                xTickFormatter: (v) => String(v),
-                yTickFormatter: (v) => `${(v as number).toFixed(0)}€`,
-                filterLabel: 'Filtrar',
-                filterPlaceholder: 'Filtrar séries',
-                filterSelectedAriaLabel: 'Selecionado',
-                legendAriaLabel: 'Legenda',
-                chartAriaRoleDescription: 'gráfico de linha',
-                xAxisAriaRoleDescription: 'eixo x',
-                yAxisAriaRoleDescription: 'eixo y',
-              }}
-              ariaLabel="Vendas por dia"
-              height={260}
-              hideFilter
-              hideLegend
-            />
-          </Container>
-          <Container header={<Header variant="h2">Produtos mais vendidos</Header>}>
-            <BarChart
-              series={[{
-                title: 'Unidades vendidas',
-                type: 'bar',
-                data: resumo.produtosMaisVendidos.map(p => ({ x: p.nome, y: p.quantidade })),
-              }]}
-              xDomain={resumo.produtosMaisVendidos.map(p => p.nome)}
-              yDomain={[0, Math.max(1, ...resumo.produtosMaisVendidos.map(p => p.quantidade))]}
-              i18nStrings={{
-                xTickFormatter: (v) => String(v),
-                yTickFormatter: (v) => String(v),
-                filterLabel: 'Filtrar',
-                filterPlaceholder: 'Filtrar séries',
-                filterSelectedAriaLabel: 'Selecionado',
-                legendAriaLabel: 'Legenda',
-                chartAriaRoleDescription: 'gráfico de barras',
-                xAxisAriaRoleDescription: 'eixo x',
-                yAxisAriaRoleDescription: 'eixo y',
-              }}
-              ariaLabel="Produtos mais vendidos"
-              height={260}
-              hideFilter
-              hideLegend
-            />
-          </Container>
-        </Grid>
-      </Box>
-    </ContentLayout>
-  );
+        <Card>
+          <CardHeader>
+            <CardTitle>Mais Vendidos</CardTitle>
+            <CardDescription>Top 8 produtos</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-6 w-full" />)}
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={data?.produtosMaisVendidos || []} layout="vertical" margin={{ left: 10 }}>
+                  <XAxis type="number" hide />
+                  <YAxis
+                    type="category"
+                    dataKey="nome"
+                    width={100}
+                    tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                    tickFormatter={(v: string) => v.length > 14 ? v.slice(0, 14) + '…' : v}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--popover))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px',
+                      fontSize: '12px',
+                    }}
+                  />
+                  <Bar dataKey="quantidade" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  )
 }
