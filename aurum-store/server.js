@@ -17,6 +17,7 @@ const checkoutRoutes  = require('./src/routes/checkout');
 const adminRoutes     = require('./src/routes/admin');
 const configRoutes    = require('./src/routes/config');
 const couponsRoutes   = require('./src/routes/coupons');
+const categoriesRoutes = require('./src/routes/categories');
 const cmsRoutes       = require('./src/routes/cms');
 const teamRoutes      = require('./src/routes/team');
 const settingsRoutes  = require('./src/routes/settings');
@@ -53,6 +54,9 @@ app.use('/api/admin',    adminRoutes);     // dashboard, produtos, encomendas, c
 app.use('/api/config',   configRoutes);    // portes/config pública (loja + checkout)
 
 app.use('/api/admin/coupons',   couponsRoutes);
+app.use('/api/coupons',         couponsRoutes.publicRouter);  // POST /validar — pré-visualizar desconto na loja
+app.use('/api/admin/categories', categoriesRoutes);
+app.use('/api/categories',      categoriesRoutes.publicRouter); // nav + filtros da loja, em tempo real
 app.use('/api/admin/cms',       cmsRoutes);
 app.use('/api/cms',             cmsRoutes.publicRouter);      // páginas/posts publicados (loja)
 app.use('/api/admin/team',      teamRoutes);

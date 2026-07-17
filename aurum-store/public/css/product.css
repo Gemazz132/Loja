@@ -4,7 +4,7 @@
 
 /* ── BREADCRUMB ──────────────────────────────────────── */
 .breadcrumb-bar {
-  margin-top: var(--header-h);
+  margin-top: var(--chrome-h);
   padding: 16px 0;
   border-bottom: 1px solid var(--blush);
 }
@@ -36,7 +36,7 @@
 /* ── GALLERY ─────────────────────────────────────────── */
 .produto-galeria {
   position: sticky;
-  top: calc(var(--header-h) + 24px);
+  top: calc(var(--chrome-h) + 24px);
 }
 
 .galeria-main {
@@ -270,6 +270,22 @@
 
 /* CTA */
 .produto-cta { margin-bottom: 32px; }
+.produto-cta-linha { display: flex; gap: 10px; align-items: stretch; }
+.btn-favorito {
+  flex-shrink: 0;
+  width: 52px;
+  border: 1px solid var(--charcoal);
+  background: none;
+  color: var(--charcoal);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+}
+.btn-favorito:hover { border-color: var(--gold); color: var(--gold); }
+.btn-favorito.activo { background: var(--gold); border-color: var(--gold); color: #fff; }
+.btn-favorito.activo svg { fill: currentColor; }
 .add-feedback {
   min-height: 20px;
   font-size: 12px;

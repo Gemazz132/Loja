@@ -160,6 +160,15 @@ export const cuponsApi = {
   remover: (id: number) => request<{ ok: true }>(`/admin/coupons/${id}`, { method: 'DELETE' }),
 };
 
+// ── Categorias ───────────────────────────────────────────────────────────
+export interface Categoria { id: number; nome: string; slug: string; ordem: number; total_produtos: number }
+export const categoriasApi = {
+  listar: () => request<Categoria[]>('/admin/categories'),
+  criar: (nome: string) => request<{ ok: true; id: number; slug: string }>('/admin/categories', { method: 'POST', body: JSON.stringify({ nome }) }),
+  atualizar: (id: number, nome: string) => request<{ ok: true }>(`/admin/categories/${id}`, { method: 'PUT', body: JSON.stringify({ nome }) }),
+  remover: (id: number) => request<{ ok: true }>(`/admin/categories/${id}`, { method: 'DELETE' }),
+};
+
 // ── Dashboard ────────────────────────────────────────────────────────────
 export interface ResumoDashboard {
   vendasHoje: number;

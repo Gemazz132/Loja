@@ -12,14 +12,19 @@
 </head>
 <body>
 
+  <!-- LETREIRO (MARQUEE) — fixo no topo do site -->
+  <div class="marquee-bar" role="marquee" aria-label="Informação de envio e promoções">
+    <div class="marquee-track">
+      <span class="marquee-content">ENVIO GRATUITO EM COMPRAS ACIMA DE 75€&nbsp;•&nbsp;ENTREGA EM 3–5 DIAS ÚTEIS (PORTUGAL CONTINENTAL)&nbsp;•&nbsp;DEVOLUÇÕES ATÉ 30 DIAS (ARTIGOS NÃO USADOS E COM ETIQUETAS)&nbsp;•&nbsp;1ª COMPRA? SEJA BEM-VINDO! USE O CUPÃO: PRIMEIRA15 E GANHE 15% DE DESCONTO&nbsp;•&nbsp;</span>
+      <span class="marquee-content" aria-hidden="true">ENVIO GRATUITO EM COMPRAS ACIMA DE 75€&nbsp;•&nbsp;ENTREGA EM 3–5 DIAS ÚTEIS (PORTUGAL CONTINENTAL)&nbsp;•&nbsp;DEVOLUÇÕES ATÉ 30 DIAS (ARTIGOS NÃO USADOS E COM ETIQUETAS)&nbsp;•&nbsp;1ª COMPRA? SEJA BEM-VINDO! USE O CUPÃO: PRIMEIRA15 E GANHE 15% DE DESCONTO&nbsp;•&nbsp;</span>
+    </div>
+  </div>
+
   <!-- HEADER -->
   <header class="site-header">
     <div class="header-inner">
       <nav class="header-nav-left">
-        <a href="/?category=casacos">Casacos</a>
-        <a href="/?category=camisolas">Camisolas</a>
-        <a href="/?category=camisas">Camisas</a>
-        <a href="/?category=calcas">Calças</a>
+        <!-- Preenchido dinamicamente por nav.js a partir de /api/categories -->
       </nav>
       <a href="/" class="logo">AURUM</a>
       <div class="header-actions">
@@ -122,9 +127,14 @@
 
         <!-- CTA -->
         <div class="produto-cta">
-          <button class="btn-primary full-width btn-lg" id="addToCartBtn">
-            Adicionar ao carrinho
-          </button>
+          <div class="produto-cta-linha">
+            <button class="btn-primary full-width btn-lg" id="addToCartBtn">
+              Adicionar ao carrinho
+            </button>
+            <button class="btn-favorito" id="favoritoBtn" aria-label="Adicionar aos favoritos" title="Adicionar aos favoritos">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21.2l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>
+            </button>
+          </div>
           <div class="add-feedback" id="addFeedback"></div>
         </div>
 
@@ -211,6 +221,20 @@
         </button>
       </div>
       <form class="checkout-form" id="checkoutForm">
+        <div class="conta-checkout" id="contaCheckoutBox">
+          <p class="conta-checkout-logado" id="contaLogadoTexto" style="display:none"></p>
+          <div class="conta-checkout-opcoes" id="contaOpcoesBox">
+            <p class="conta-checkout-pergunta">Já tens conta? <button type="button" class="link-btn" id="abrirLoginCheckout">Iniciar sessão</button></p>
+            <label class="conta-checkout-toggle">
+              <input type="checkbox" id="criarContaCheckbox">
+              Criar conta com estes dados (para acompanhares as tuas encomendas)
+            </label>
+            <div class="form-group" id="passwordContaGroup" style="display:none">
+              <label>Password</label>
+              <input type="password" id="passwordConta" minlength="6" placeholder="Mínimo 6 caracteres">
+            </div>
+          </div>
+        </div>
         <div class="form-row">
           <div class="form-group">
             <label>Nome completo *</label>
@@ -233,7 +257,7 @@
         </div>
         <div class="form-group">
           <label>Morada</label>
-          <input type="text" name="morada">
+          <input type="text" name="morada" placeholder="Rua, número, andar">
         </div>
         <div class="form-row">
           <div class="form-group">
@@ -247,11 +271,40 @@
         </div>
         <div class="form-group">
           <label>Método de pagamento</label>
-          <select name="metodo_pagamento">
-            <option value="Transferência">Transferência Bancária</option>
-            <option value="MBWay">MBWay</option>
-            <option value="Multibanco">Multibanco</option>
-          </select>
+          <div class="metodos-pagamento" id="metodosPagamento">
+            <label class="metodo-pagamento-card">
+              <input type="radio" name="metodo_pagamento" value="Transferência" checked>
+              <span class="metodo-icone" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+              </span>
+              <span class="metodo-label">Transferência Bancária</span>
+            </label>
+            <label class="metodo-pagamento-card">
+              <input type="radio" name="metodo_pagamento" value="MBWay">
+              <span class="metodo-icone" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="6" y="2" width="12" height="20" rx="2"/><line x1="10" y1="18" x2="14" y2="18"/></svg>
+              </span>
+              <span class="metodo-label">MBWay</span>
+            </label>
+            <label class="metodo-pagamento-card">
+              <input type="radio" name="metodo_pagamento" value="Multibanco">
+              <span class="metodo-icone" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="4" width="20" height="16" rx="2"/><circle cx="8" cy="12" r="2"/><line x1="14" y1="9" x2="19" y2="9"/><line x1="14" y1="12" x2="19" y2="12"/><line x1="14" y1="15" x2="19" y2="15"/></svg>
+              </span>
+              <span class="metodo-label">Multibanco</span>
+            </label>
+          </div>
+          <p class="metodo-pagamento-msg" id="metodoPagamentoMsg">
+            Após confirmares, enviamos os dados para pagamento por transferência para o teu email — a encomenda entra em preparação assim que o pagamento for confirmado.
+          </p>
+        </div>
+        <div class="form-group">
+          <label>Código de desconto (opcional)</label>
+          <div class="cupom-linha">
+            <input type="text" id="cupomInput" placeholder="Ex: GYM20" style="text-transform: uppercase">
+            <button type="button" class="btn-outline cupom-btn" id="cupomAplicarBtn">Aplicar</button>
+          </div>
+          <p class="cupom-msg" id="cupomMsg"></p>
         </div>
         <div class="order-summary" id="orderSummaryModal"></div>
         <button type="submit" class="btn-primary full-width" id="submitCheckout">Confirmar encomenda</button>
@@ -262,7 +315,7 @@
         <h3>Encomenda confirmada!</h3>
         <p>O teu número de encomenda é:</p>
         <p class="order-number" id="orderNumberDisplay"></p>
-        <p class="success-sub">Obrigado por escolheres AURUM.</p>
+        <p class="success-sub">Receberás confirmação em breve. Obrigado por escolheres AURUM.</p>
         <button class="btn-outline" onclick="location.href='/'">Continuar a comprar</button>
       </div>
     </div>
@@ -277,10 +330,7 @@
       <div class="footer-links">
         <div>
           <h4>Colecção</h4>
-          <a href="/?category=casacos">Casacos</a>
-          <a href="/?category=camisolas">Camisolas</a>
-          <a href="/?category=calcas">Calças</a>
-          <a href="/?category=vestidos">Vestidos</a>
+          <div id="footerCategorias"><!-- Preenchido dinamicamente a partir de /api/categories --></div>
         </div>
         <div>
           <h4>Apoio</h4>
@@ -291,11 +341,24 @@
         </div>
       </div>
     </div>
+    <div class="footer-pagamentos">
+      <span class="pagamento-badge" data-marca="apple-pay">Apple Pay</span>
+      <span class="pagamento-badge" data-marca="google-pay">Google Pay</span>
+      <span class="pagamento-badge" data-marca="paypal">PayPal</span>
+      <span class="pagamento-badge" data-marca="visa">VISA</span>
+      <span class="pagamento-badge" data-marca="mastercard">Mastercard</span>
+      <span class="pagamento-badge" data-marca="maestro">Maestro</span>
+      <span class="pagamento-badge" data-marca="mbway">MB WAY</span>
+      <span class="pagamento-badge" data-marca="multibanco">Multibanco</span>
+      <span class="pagamento-badge" data-marca="klarna">Klarna</span>
+      <span class="pagamento-badge" data-marca="blik">Blik</span>
+    </div>
     <div class="footer-bottom">
       <p>© 2024 AURUM. Todos os direitos reservados.</p>
     </div>
   </footer>
 
+  <script src="/js/nav.js"></script>
   <script src="/js/cart.js"></script>
   <script src="/js/account.js"></script>
   <script src="/js/product.js"></script>

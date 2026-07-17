@@ -63,3 +63,20 @@ function registarUsoCupom(cupomId) {
 module.exports = router;
 module.exports.validarCupom = validarCupom;
 module.exports.registarUsoCupom = registarUsoCupom;
+
+// ── Rota pública (loja) — pré-visualizar o desconto antes do checkout ─────
+// Não regista utilização (isso só acontece a sério no /api/checkout, ao
+// confirmar a encomenda) — serve só para o cliente ver o desconto em tempo real.
+router.publicRouter = require('express').Router();
+router.publicRouter.post('/validar', (req, res) => {
+  const { codigo, subtotal } = req.body || {};
+  if (!codigo || typeof subtotal !== 'number') {
+    return res.status(400).json({ error: 'Código e subtotal são obrigatórios.' });
+  }
+  try {
+    const { desconto } = validarCupom(codigo, subtotal);
+    res.json({ valido: true, desconto });
+  } catch (err) {
+    res.status(400).json({ valido: false, error: err.message });
+  }
+});

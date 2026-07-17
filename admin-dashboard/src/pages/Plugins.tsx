@@ -21,7 +21,7 @@ export default function Plugins() {
   }
 
   return (
-    <ContentLayout header={<Header variant="h1" description="Ativa módulos opcionais sem tocar em código">Plugins</Header>}>
+    <ContentLayout header={<Header variant="h1" description="Activa módulos opcionais sem tocar em código">Plugins</Header>}>
       {aviso && <Alert type="info" dismissible onDismiss={() => setAviso(null)}>{aviso}</Alert>}
       <Cards
         items={plugins}

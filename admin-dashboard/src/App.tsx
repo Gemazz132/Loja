@@ -9,6 +9,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Orders from './pages/Orders';
 import Products from './pages/Products';
+import Categories from './pages/Categories';
 import Customers from './pages/Customers';
 import Coupons from './pages/Coupons';
 import Content from './pages/Content';
@@ -18,12 +19,13 @@ import Analytics from './pages/Analytics';
 import Settings from './pages/Settings';
 
 type Pagina =
-  | 'dashboard' | 'orders' | 'products' | 'customers' | 'discounts'
+  | 'dashboard' | 'orders' | 'products' | 'categories' | 'customers' | 'discounts'
   | 'content' | 'team' | 'plugins' | 'analytics' | 'settings';
 
 const TITULOS: Record<Pagina, string> = {
   dashboard: 'Dashboard', orders: 'Encomendas', products: 'Produtos', customers: 'Clientes',
   discounts: 'Cupões e Descontos', content: 'Conteúdo', team: 'Equipa & Permissões',
+  categories: 'Categorias',
   plugins: 'Plugins', analytics: 'Analytics', settings: 'Definições',
 };
 
@@ -43,6 +45,7 @@ function PainelAutenticado() {
     products: <Products />,
     customers: <Customers />,
     discounts: <Coupons />,
+    categories: <Categories />,
     content: <Content />,
     team: <Team />,
     plugins: <Plugins />,
@@ -81,6 +84,7 @@ function PainelAutenticado() {
               { type: 'divider' },
               { type: 'section', text: 'Loja', items: [
                 { type: 'link', text: 'Produtos', href: '#products' },
+                { type: 'link', text: 'Categorias', href: '#categories' },
                 { type: 'link', text: 'Encomendas', href: '#orders' },
                 { type: 'link', text: 'Clientes', href: '#customers' },
                 { type: 'link', text: 'Cupões e Descontos', href: '#discounts' },

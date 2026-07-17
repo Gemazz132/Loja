@@ -284,6 +284,36 @@
     Cart.openCart();
   });
 
+  // ── Favoritos ─────────────────────────────────────────
+  const favoritoBtn = document.getElementById('favoritoBtn');
+  if (favoritoBtn) {
+    let autenticado = false;
+    try {
+      const me = await fetch('/api/auth/me').then(r => r.json());
+      autenticado = !!me.autenticado;
+      if (autenticado) {
+        const estado = await fetch(`/api/account/favoritos/${produto.id}/estado`).then(r => r.json());
+        favoritoBtn.classList.toggle('activo', !!estado.favorito);
+      }
+    } catch { /* segue sem estado de favorito */ }
+
+    favoritoBtn.addEventListener('click', async () => {
+      if (!autenticado) {
+        if (typeof Account !== 'undefined') Account.open();
+        return;
+      }
+      const jaAtivo = favoritoBtn.classList.contains('activo');
+      try {
+        const res = await fetch(`/api/account/favoritos/${produto.id}`, { method: jaAtivo ? 'DELETE' : 'POST' });
+        if (!res.ok) throw new Error();
+        favoritoBtn.classList.toggle('activo', !jaAtivo);
+      } catch {
+        addFeedback.style.color = 'var(--error)';
+        addFeedback.textContent = 'Não foi possível actualizar os favoritos.';
+      }
+    });
+  }
+
   // ── Mostrar conteúdo ──────────────────────────────────
   skeleton.style.display = 'none';
   conteudo.style.display = '';

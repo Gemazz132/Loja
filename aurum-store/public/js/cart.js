@@ -4,6 +4,18 @@
 const Cart = (() => {
   const STORAGE_KEY = 'aurum_cart';
 
+  // Config de portes (vinda de /api/config, com fallback enquanto não carrega)
+  let configPortes = { portes_valor: 4.99, portes_gratis_acima: 75 };
+  // Cupão aplicado no checkout actual: { codigo, desconto } | null
+  let cupomAplicado = null;
+
+  async function carregarConfigPortes() {
+    try {
+      const res = await fetch('/api/config');
+      if (res.ok) configPortes = await res.json();
+    } catch { /* mantém os valores por omissão em caso de falha de rede */ }
+  }
+
   function load() {
     try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
     catch { return []; }
@@ -137,8 +149,9 @@ const Cart = (() => {
     if (!el) return;
     const items = load();
     const sub = items.reduce((s, i) => s + i.preco * i.quantidade, 0);
-    const portes = sub >= 75 ? 0 : 4.99;
-    const tot = sub + portes;
+    const portes = sub >= configPortes.portes_gratis_acima ? 0 : configPortes.portes_valor;
+    const desconto = cupomAplicado ? cupomAplicado.desconto : 0;
+    const tot = Math.max(0, sub - desconto + portes);
     el.innerHTML = `
       ${items.map(i => `
         <div class="order-summary-item">
@@ -150,6 +163,12 @@ const Cart = (() => {
         <span>Portes</span>
         <span>${portes === 0 ? 'Grátis' : fmt(portes)}</span>
       </div>
+      ${cupomAplicado ? `
+        <div class="order-summary-item order-summary-desconto">
+          <span>Cupão "${cupomAplicado.codigo}"</span>
+          <span>− ${fmt(desconto)}</span>
+        </div>
+      ` : ''}
       <div class="order-summary-total">
         <span>Total</span>
         <span>${fmt(tot)}</span>
@@ -248,9 +267,57 @@ const Cart = (() => {
     // Estado inicial do cartão de pagamento pré-seleccionado
     document.querySelector('input[name="metodo_pagamento"]:checked')?.closest('.metodo-pagamento-card')?.classList.add('selecionado');
 
+    // ── Cupão de desconto — validação em tempo real ──────
+    const cupomInput = document.getElementById('cupomInput');
+    const cupomAplicarBtn = document.getElementById('cupomAplicarBtn');
+    const cupomMsg = document.getElementById('cupomMsg');
+
+    async function aplicarCupom() {
+      const codigo = (cupomInput?.value || '').trim();
+      if (!cupomMsg) return;
+      if (!codigo) { cupomMsg.textContent = ''; cupomMsg.className = 'cupom-msg'; return; }
+
+      const sub = load().reduce((s, i) => s + i.preco * i.quantidade, 0);
+      cupomMsg.textContent = 'A verificar…';
+      cupomMsg.className = 'cupom-msg';
+
+      try {
+        const res = await fetch('/api/coupons/validar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ codigo, subtotal: sub }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.valido) throw new Error(data.error || 'Cupão inválido.');
+
+        cupomAplicado = { codigo: codigo.toUpperCase(), desconto: data.desconto };
+        cupomMsg.textContent = `Cupão aplicado: −${fmt(data.desconto)}`;
+        cupomMsg.className = 'cupom-msg cupom-msg-ok';
+      } catch (err) {
+        cupomAplicado = null;
+        cupomMsg.textContent = err.message;
+        cupomMsg.className = 'cupom-msg cupom-msg-erro';
+      }
+      renderOrderSummary();
+    }
+
+    if (cupomAplicarBtn) cupomAplicarBtn.addEventListener('click', aplicarCupom);
+    if (cupomInput) {
+      cupomInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); aplicarCupom(); } });
+      // Se o cliente mudar o código depois de já ter aplicado um, invalida o anterior
+      cupomInput.addEventListener('input', () => {
+        if (cupomAplicado) { cupomAplicado = null; renderOrderSummary(); }
+        if (cupomMsg) { cupomMsg.textContent = ''; cupomMsg.className = 'cupom-msg'; }
+      });
+    }
+
     if (checkoutBtn) {
-      checkoutBtn.addEventListener('click', () => {
+      checkoutBtn.addEventListener('click', async () => {
         closeCart();
+        cupomAplicado = null;
+        if (cupomInput) cupomInput.value = '';
+        if (cupomMsg) { cupomMsg.textContent = ''; cupomMsg.className = 'cupom-msg'; }
+        await carregarConfigPortes();
         renderOrderSummary();
         atualizarEstadoConta();
         if (checkoutOverlay) checkoutOverlay.classList.add('open');
@@ -298,7 +365,7 @@ const Cart = (() => {
             codigo_postal: fd.get('codigo_postal'),
             pais: fd.get('pais'),
             metodo_pagamento: fd.get('metodo_pagamento'),
-            cupom: (document.getElementById('cupomInput')?.value || '').trim() || undefined,
+            cupom: cupomAplicado?.codigo || (document.getElementById('cupomInput')?.value || '').trim() || undefined,
             itens: load().map(i => ({
               produto_id: i.produto_id,
               quantidade: i.quantidade,
@@ -315,6 +382,7 @@ const Cart = (() => {
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || 'Erro ao processar encomenda.');
           clear();
+          cupomAplicado = null;
           if (checkoutForm) checkoutForm.style.display = 'none';
           if (checkoutSuccess) checkoutSuccess.style.display = '';
           const orderDisplay = document.getElementById('orderNumberDisplay');
@@ -333,6 +401,7 @@ const Cart = (() => {
     updateBadge();
     renderCart();
     bindCheckout();
+    carregarConfigPortes();
 
     const cartToggle = document.getElementById('cartToggle');
     const cartClose = document.getElementById('cartClose');

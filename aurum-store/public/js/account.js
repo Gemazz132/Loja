@@ -78,6 +78,10 @@ const Account = (() => {
           <div class="acc-loading">A carregar…</div>
         </div>
 
+        <div style="padding: 16px 24px 0;">
+          <a href="/perfil.html" class="btn-outline full-width" style="text-align:center; display:block;">Ver perfil completo</a>
+        </div>
+
         <div style="padding: 20px 24px; border-top: 1px solid var(--blush); margin-top: auto;">
           <button class="btn-outline full-width" id="accountLogout">Terminar sessão</button>
         </div>

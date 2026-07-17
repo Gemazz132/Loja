@@ -16,7 +16,8 @@ import Toggle from '@cloudscape-design/components/toggle';
 import TokenGroup from '@cloudscape-design/components/token-group';
 import Badge from '@cloudscape-design/components/badge';
 import { useCollection } from '@cloudscape-design/collection-hooks';
-import { produtosApi, Produto, parseImagensExtra, parseVariantes } from '../lib/api';
+import Select from '@cloudscape-design/components/select';
+import { produtosApi, Produto, parseImagensExtra, parseVariantes, categoriasApi, Categoria } from '../lib/api';
 import { useAuth } from '../lib/auth';
 
 const LIMIAR_STOCK_BAIXO = 5;
@@ -30,6 +31,7 @@ function BadgeStock({ stock }: { stock: number }) {
 export default function Products() {
   const { pode } = useAuth();
   const [produtos, setProdutos] = useState<Produto[]>([]);
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [modalAberto, setModalAberto] = useState(false);
   const [emEdicao, setEmEdicao] = useState<Partial<Produto> | null>(null);
@@ -44,7 +46,7 @@ export default function Products() {
     setProdutos(await produtosApi.listar());
     setCarregando(false);
   }
-  useEffect(() => { carregar(); }, []);
+  useEffect(() => { carregar(); categoriasApi.listar().then(setCategorias); }, []);
 
   const { items, collectionProps, filterProps, paginationProps, filteredItemsCount } = useCollection(produtos, {
     filtering: { empty: <Box textAlign="center">Nenhum produto encontrado.</Box> },
@@ -171,7 +173,19 @@ export default function Products() {
                 <FormField label="Stock"><Input type="number" value={String(emEdicao.stock ?? '')} onChange={({ detail }) => setEmEdicao({ ...emEdicao, stock: Number(detail.value) })} /></FormField>
               </SpaceBetween>
 
-              <FormField label="Categoria"><Input value={emEdicao.categoria || ''} onChange={({ detail }) => setEmEdicao({ ...emEdicao, categoria: detail.value })} /></FormField>
+              <FormField label="Categoria">
+                <Select
+                  selectedOption={
+                    emEdicao.categoria
+                      ? { label: categorias.find(c => c.slug === emEdicao.categoria)?.nome || emEdicao.categoria, value: emEdicao.categoria }
+                      : null
+                  }
+                  placeholder="Escolhe uma categoria"
+                  options={categorias.map(c => ({ label: c.nome, value: c.slug }))}
+                  onChange={({ detail }) => setEmEdicao({ ...emEdicao, categoria: detail.selectedOption.value })}
+                  empty="Ainda não há categorias — cria uma em Categorias no menu."
+                />
+              </FormField>
 
               <FormField label="Imagem principal">
                 <SpaceBetween direction="horizontal" size="s">

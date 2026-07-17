@@ -2,13 +2,15 @@
 
 (async () => {
   let allProducts = [];
+  let categorias = []; // [{ nome, slug }] — vindo de /api/categories
   let activeCategory = '';
   let searchQuery = '';
 
   const grid = document.getElementById('produtosGrid');
   const emptyState = document.getElementById('emptyState');
   const sectionTitle = document.getElementById('sectionTitle');
-  const filterTabs = document.querySelectorAll('.filter-tab');
+  const filterTabsContainer = document.getElementById('filterTabs');
+  const headerNavLeft = document.querySelector('.header-nav-left');
   const heroSection = document.getElementById('heroSection');
 
   // ── Ler URL params ────────────────────────────────────
@@ -21,20 +23,54 @@
     if (heroSection) heroSection.style.display = 'none';
   }
 
-  // Activar tab correcto
-  filterTabs.forEach(tab => {
-    tab.classList.toggle('active', tab.dataset.cat === activeCategory);
-    tab.addEventListener('click', () => {
-      activeCategory = tab.dataset.cat;
-      searchQuery = '';
-      filterTabs.forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-      const url = activeCategory ? `/?category=${activeCategory}` : '/';
-      history.pushState({}, '', url);
-      renderProducts();
-      updateTitle();
+  // ── Carregar categorias reais (admin → loja, em tempo real) ──────────
+  try {
+    const resCat = await fetch('/api/categories');
+    categorias = await resCat.json();
+  } catch {
+    categorias = []; // sem categorias, mostra só "Tudo"
+  }
+
+  function renderFilterTabs() {
+    if (!filterTabsContainer) return;
+    filterTabsContainer.innerHTML = `
+      <button class="filter-tab${activeCategory === '' ? ' active' : ''}" data-cat="">Tudo</button>
+      ${categorias.map(c => `
+        <button class="filter-tab${activeCategory === c.slug ? ' active' : ''}" data-cat="${c.slug}">${c.nome}</button>
+      `).join('')}
+    `;
+    filterTabsContainer.querySelectorAll('.filter-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        activeCategory = tab.dataset.cat;
+        searchQuery = '';
+        filterTabsContainer.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        const url = activeCategory ? `/?category=${activeCategory}` : '/';
+        history.pushState({}, '', url);
+        renderProducts();
+        updateTitle();
+      });
     });
-  });
+  }
+
+  function renderHeaderNav() {
+    if (headerNavLeft) {
+      // Mostra até 4 categorias no menu principal (mantém o cabeçalho limpo);
+      // o resto continua acessível através dos separadores por baixo do hero.
+      headerNavLeft.innerHTML = categorias.slice(0, 4).map(c => `
+        <a href="/?category=${c.slug}">${c.nome}</a>
+      `).join('');
+    }
+    const footerCategorias = document.getElementById('footerCategorias');
+    if (footerCategorias) {
+      footerCategorias.innerHTML = categorias.slice(0, 4).map(c => `
+        <a href="/?category=${c.slug}">${c.nome}</a>
+      `).join('');
+    }
+  }
+
+  renderFilterTabs();
+  renderHeaderNav();
 
   // ── Carregar produtos ─────────────────────────────────
   try {
@@ -66,8 +102,8 @@
   searchInput?.addEventListener('input', () => {
     searchQuery = searchInput.value.trim();
     activeCategory = '';
-    filterTabs.forEach(t => t.classList.remove('active'));
-    document.querySelector('[data-cat=""]')?.classList.add('active');
+    filterTabsContainer?.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+    filterTabsContainer?.querySelector('[data-cat=""]')?.classList.add('active');
     renderProducts();
     updateTitle();
   });
@@ -101,8 +137,7 @@
   }
 
   function catLabel(cat) {
-    const map = { casacos: 'Casacos', camisolas: 'Camisolas', camisas: 'Camisas', tshirts: 'T-Shirts', calcas: 'Calças', vestidos: 'Vestidos', saias: 'Saias' };
-    return map[cat] || cat;
+    return categorias.find(c => c.slug === cat)?.nome || cat;
   }
 
   function renderProducts() {
