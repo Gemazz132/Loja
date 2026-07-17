@@ -86,8 +86,8 @@ export default function LoginPage() {
         </form>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          © 2024 AURUM. Todos os direitos reservados.
-        </p>
+          © 2026 AURUM. Todos os direitos reservados.
+        </p>  
       </div>
     </div>
   )
